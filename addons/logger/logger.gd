@@ -23,6 +23,8 @@ var _default_args={}
 
 var _file
 
+var _subsystems := {}
+
 func _ready():
     _set_loglevel(Config.get_var("log-level","debug"))
     
@@ -40,6 +42,15 @@ func _set_loglevel(level:String):
         "fatal":
             CURRENT_LOG_LEVEL = LogLevel.FATAL
 
+func _get_current_loglevel(subsystem):
+    if subsystem in _subsystems:
+        return _subsystems[subsystem]
+    
+    return CURRENT_LOG_LEVEL
+
+func set_subsytem_log_level(subsystem, loglevel : int) -> void:
+    _subsystems[subsystem] = loglevel
+
 func with(prefix:String="",args:Dictionary={}) ->Log :
     var l = Log.new()
     l.CURRENT_LOG_LEVEL = self.CURRENT_LOG_LEVEL
@@ -48,16 +59,21 @@ func with(prefix:String="",args:Dictionary={}) ->Log :
         l._default_args[k] = args[k]
     return l
 
-func logger(message:String,values,log_level=LogLevel.INFO):
-    if CURRENT_LOG_LEVEL > log_level :
+func logger(message:String,values,log_level=LogLevel.INFO, subsystem = null):
+    if _get_current_loglevel(subsystem) > log_level :
         return
+    
+    var local_prefix = _prefix
+    if subsystem != null:
+        local_prefix = "[%s]%s" % [subsystem, _prefix]
+        
     var log_msg_format = "{level} [{time}]{prefix} {message} "
 
     var now = Time.get_datetime_dict_from_system(true)
     
     var msg = log_msg_format.format(
         {
-            "prefix":_prefix,
+            "prefix":local_prefix,
             "message":message,
             "time":"{day}/{month}/{year} {hour}:{minute}:{second}".format(now),
             "level":LogLevel.keys()[log_level]
@@ -124,20 +140,20 @@ func logger(message:String,values,log_level=LogLevel.INFO):
         _:
             print(msg)
             
-func debug(message:String,values={}):
-    call_thread_safe("logger",message,values,LogLevel.DEBUG)
+func debug(message:String,values={},subsystem=null):
+    call_thread_safe("logger",message,values,LogLevel.DEBUG,subsystem)
 
-func info(message:String,values={}):
-    call_thread_safe("logger",message,values)
+func info(message:String,values={},subsystem=null):
+    call_thread_safe("logger",message,values,LogLevel.INFO,subsystem)
 
-func warn(message:String,values={}):
-    call_thread_safe("logger",message,values,LogLevel.WARN)
+func warn(message:String,values={},subsystem=null):
+    call_thread_safe("logger",message,values,LogLevel.WARN,subsystem)
 
-func error(message:String,values={}):
-    call_thread_safe("logger",message,values,LogLevel.ERROR)
+func error(message:String,values={},subsystem=null):
+    call_thread_safe("logger",message,values,LogLevel.ERROR,subsystem)
 
-func fatal(message:String,values={}):
-    call_thread_safe("logger",message,values,LogLevel.FATAL)
+func fatal(message:String,values={},subsystem=null):
+    call_thread_safe("logger",message,values,LogLevel.FATAL,subsystem)
     
 
 func _write_logs(message:String):
